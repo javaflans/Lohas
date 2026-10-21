@@ -1,25 +1,19 @@
 package com.paralucent.dao;
 
-import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.Criteria;
 import org.hibernate.Session;
-import org.hibernate.criterion.Order;
-import org.hibernate.criterion.Restrictions;
+import org.hibernate.query.Query;
+import org.springframework.stereotype.Repository;
 
-import com.alibaba.druid.sql.dialect.oracle.ast.stmt.OracleIfStatement.Else;
 import com.paralucent.model.Beacon;
 import com.paralucent.model.Customer;
 import com.paralucent.model.Event;
@@ -30,6 +24,7 @@ import com.paralucent.model.Menus;
 import com.paralucent.model.VerifyAccount;
 import com.paralucent.viewmodel.HistoryBO;
 
+@Repository
 public class DataDaoImpl extends BaseDao implements DataDao {
 
 	public DataDaoImpl() {
@@ -41,9 +36,9 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Transactional
 	public int insert(Member member) {
 		Session session = beginTransaction();
-		session.saveOrUpdate(member);
+		Member merged = session.merge(member);
 		commit();
-		Serializable id = session.getIdentifier(member);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 	}
@@ -51,9 +46,7 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Override
 	public List<Member> search() {
 		beginTransaction();
-		Criteria criteria = getCriteria(Member.class);
-		@SuppressWarnings("unchecked")
-		List<Member> list = criteria.list();
+		List<Member> list = createQuery("from Member", Member.class).list();
 		commit();
 		clearSession();
 		return list;
@@ -61,10 +54,10 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 
 	@Override
 	public Member searchById(String id) {
-		Criteria criteria = getCriteria(Member.class);
-		criteria.setCacheable(Boolean.TRUE);
-		criteria.add(Restrictions.eq("id", id));
-		Member result = (Member) criteria.uniqueResult();
+		Query<Member> query = createQuery("from Member where id = :id", Member.class);
+		query.setCacheable(Boolean.TRUE);
+		query.setParameter("id", Integer.valueOf(id));
+		Member result = query.uniqueResult();
 		clearSession();
 		return result;
 	}
@@ -72,9 +65,9 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Override
 	public int update(Member member) {
 		Session session = beginTransaction();
-		session.saveOrUpdate(member);
+		Member merged = session.merge(member);
 		commit();
-		Serializable id = session.getIdentifier(member);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 	}
@@ -82,41 +75,38 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Override
 	public int delete(Member member) {
 		Session session = beginTransaction();
-		session.delete(member);
+		session.remove(session.merge(member));
 		commit();
-		Serializable id = session.getIdentifier(member);
 		clearSession();
-		return (Integer) id;
+		return member.getId();
 	}
 
 	@Override
 	public int deleteById(String id) {
 		Session session = beginTransaction();
 		Member member = searchById(id);
-		session.delete(member);
+		session.remove(session.merge(member));
 		commit();
-		Serializable ids = session.getIdentifier(member);
 		clearSession();
-		return (Integer) ids;
+		return member.getId();
 	}
 
 	@Override
 	public List<Customer> searchCustomers() {
 		beginTransaction();
-		Criteria criteria = getCriteria(Customer.class);
-		@SuppressWarnings("unchecked")
-		List<Customer> result = criteria.list();
+		List<Customer> result = createQuery("from Customer", Customer.class).list();
 		commit();
 		clearSession();
 		return result;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public List<Menus> searhMenus() {
-		Criteria criteria = getCriteria(Menus.class);
-		criteria.createCriteria("status").add(Restrictions.and(Restrictions.eq("stuType", "enabled"), Restrictions.eq("usageTable", "menus")));
-		List<Menus> result = criteria.list();
+		List<Menus> result = createQuery(
+				"select m from Menus m join m.status s where s.stuType = :stuType and s.usageTable = :usageTable", Menus.class)
+				.setParameter("stuType", "enabled")
+				.setParameter("usageTable", "menus")
+				.list();
 		clearSession();
 		return result;
 	}
@@ -124,9 +114,9 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Override
 	public int insert(VerifyAccount verify) {
 		Session session = beginTransaction();
-		session.saveOrUpdate(verify);
+		VerifyAccount merged = session.merge(verify);
 		commit();
-		Serializable id = session.getIdentifier(verify);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 
@@ -134,9 +124,9 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 
 	@Override
 	public List<Beacon> queryBeaconList() {
-		Criteria criteria = getCriteria(Beacon.class);
-		criteria.add(Restrictions.eq("canbeEvent", Boolean.TRUE));
-		List<Beacon> result = criteria.list();
+		List<Beacon> result = createQuery("from Beacon where canbeEvent = :canbeEvent", Beacon.class)
+				.setParameter("canbeEvent", Boolean.TRUE)
+				.list();
 		clearSession();
 		return result;
 	}
@@ -145,26 +135,30 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	public List<Event> queryDuplicateEvent(Event eventBO) {
 		log.info("enter queryDuplicateEvent");
 		List<Event> result = new ArrayList<Event>(0);
-		Criteria criteria = getCriteria(Event.class);
 
 		log.info("event start: " + eventBO.getEventStartDate());
 		log.info("event end: " + eventBO.getEventEndDate());
 
-		if (eventBO.getEventStartDate() != null && eventBO.getEventEndDate() != null) {
-			criteria.add(Restrictions.or(
-					Restrictions.and(Restrictions.le("eventStartDate", eventBO.getEventStartDate()),
-							Restrictions.ge("eventEndDate", eventBO.getEventStartDate())),
-					Restrictions.and(Restrictions.le("eventStartDate", eventBO.getEventEndDate()),
-							Restrictions.ge("eventEndDate", eventBO.getEventEndDate()))));
+		boolean hasDates = eventBO.getEventStartDate() != null && eventBO.getEventEndDate() != null;
+		StringBuilder hql = new StringBuilder("from Event where 1 = 1");
+		if (hasDates) {
+			hql.append(" and ((eventStartDate <= :startDate and eventEndDate >= :startDate)")
+					.append(" or (eventStartDate <= :endDate and eventEndDate >= :endDate))");
 		}
 
 		if (eventBO.getBeaconID() != null) {
-			criteria.add(Restrictions.eq("beaconID", eventBO.getBeaconID()));
+			hql.append(" and beaconID = :beaconID");
 		} else {
 			return null;
 		}
 
-		result = criteria.list();
+		Query<Event> query = createQuery(hql.toString(), Event.class);
+		if (hasDates) {
+			query.setParameter("startDate", eventBO.getEventStartDate());
+			query.setParameter("endDate", eventBO.getEventEndDate());
+		}
+		query.setParameter("beaconID", eventBO.getBeaconID());
+		result = query.list();
 		log.info("Query duplicate event size: " + result.size());
 		clearSession();
 		return result;
@@ -174,9 +168,9 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	public int insertUpdateEvent(Event event) {
 		log.info("enter insertUpdateEvent");
 		Session session = beginTransaction();
-		session.saveOrUpdate(event);
+		Event merged = session.merge(event);
 		commit();
-		Serializable id = session.getIdentifier(event);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 	}
@@ -185,20 +179,30 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	public List<EventView> searchEvents(Event eventBO) {
 		log.info("enter searchEvents");
 		List<EventView> result = new ArrayList<EventView>(0);
-		Criteria criteria = getCriteria(EventView.class);
+		StringBuilder hql = new StringBuilder("from EventView where 1 = 1");
 		if (StringUtils.isNotBlank(eventBO.getEventType())) {
-			criteria.add(Restrictions.eq("eventType", eventBO.getEventType()));
+			hql.append(" and eventType = :eventType");
 		}
 
 		if (eventBO.getEventStartDate() != null) {
-			criteria.add(Restrictions.ge("eventStartDate", eventBO.getEventStartDate()));
+			hql.append(" and eventStartDate >= :eventStartDate");
 		}
 
 		if (eventBO.getBeaconID() != null) {
-			criteria.add(Restrictions.eq("beaconID", eventBO.getBeaconID()));
+			hql.append(" and beaconID = :beaconID");
 		}
 
-		result = criteria.list();
+		Query<EventView> query = createQuery(hql.toString(), EventView.class);
+		if (StringUtils.isNotBlank(eventBO.getEventType())) {
+			query.setParameter("eventType", eventBO.getEventType());
+		}
+		if (eventBO.getEventStartDate() != null) {
+			query.setParameter("eventStartDate", eventBO.getEventStartDate());
+		}
+		if (eventBO.getBeaconID() != null) {
+			query.setParameter("beaconID", eventBO.getBeaconID());
+		}
+		result = query.list();
 		log.info("Search event size: " + result.size());
 		clearSession();
 		return result;
@@ -208,18 +212,27 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	public List<HistoryView> searchHistorys(HistoryBO historyBO) {
 		log.info("enter searchHistorys");
 		List<HistoryView> result = new ArrayList<HistoryView>(0);
-		Criteria criteria = getCriteria(HistoryView.class);
+		StringBuilder hql = new StringBuilder("from HistoryView where 1 = 1");
 		if (StringUtils.isNotBlank(historyBO.getContactLocalName())) {
-			criteria.add(Restrictions.eq("localName", historyBO.getContactLocalName()));
+			hql.append(" and localName = :localName");
 		}
 
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		if (historyBO.getStartDate() != null && historyBO.getEndDate() != null) {
-			criteria.add(Restrictions.and(Restrictions.ge("tagTime", formatter.format(historyBO.getStartDate())), Restrictions.le("tagTime", formatter.format(historyBO.getEndDate()))));
+		boolean hasDates = historyBO.getStartDate() != null && historyBO.getEndDate() != null;
+		if (hasDates) {
+			hql.append(" and tagTime >= :startTime and tagTime <= :endTime");
 		}
 
-		result = criteria.list();
-		
+		Query<HistoryView> query = createQuery(hql.toString(), HistoryView.class);
+		if (StringUtils.isNotBlank(historyBO.getContactLocalName())) {
+			query.setParameter("localName", historyBO.getContactLocalName());
+		}
+		if (hasDates) {
+			query.setParameter("startTime", formatter.format(historyBO.getStartDate()));
+			query.setParameter("endTime", formatter.format(historyBO.getEndDate()));
+		}
+		result = query.list();
+
 		// Analysis
 		int count = 0;
 		String name = "-1";
@@ -247,31 +260,27 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 				}
 			}
 		}
-		
+
 //		log.info("==========================================================");
-		
+
 //		for(HistoryView view : views) {
 //			log.info(view);
 //			log.info(view.getResidentLocalName() + " TagTime: " + view.getTagTime() + " beaconID: " + view.getBeaconID());
 //		}
-		
+
 		log.info("Search history size: " + views.size());
 		clearSession();
-		
+
 		if(views!=null && views.size()>0){
 			Object[] ids = new Object[views.size()];
 			for(int i = 0;i<views.size();i++){
 				ids[i] = views.get(i).getId();
 			}
-			
-			criteria = getCriteria(HistoryView.class);
-			criteria.add(Restrictions.in("id", ids));
-			criteria.addOrder(Order.desc("isSOS"));
-			criteria.addOrder(Order.desc("isFreezed2"));
-			criteria.addOrder(Order.desc("isFreezed1"));
-			criteria.addOrder(Order.desc("isLost"));
-			
-			views = criteria.list();
+
+			views = createQuery("from HistoryView where id in :ids"
+					+ " order by isSOS desc, isFreezed2 desc, isFreezed1 desc, isLost desc", HistoryView.class)
+					.setParameterList("ids", Arrays.asList(ids))
+					.list();
 			clearSession();
 		}
 		return views;
@@ -281,29 +290,38 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	public Event queryEventByTagTime(String tagTime, String beaconID) {
 		log.info("enter queryEventByTagTime");
 		List<Event> result = new ArrayList<Event>(0);
-		Criteria criteria = getCriteria(Event.class);
+		StringBuilder hql = new StringBuilder("from Event where 1 = 1");
 		if (StringUtils.isNotBlank(beaconID)) {
-			criteria.add(Restrictions.eq("beaconID", beaconID));
+			hql.append(" and beaconID = :beaconID");
 		}
 
+		Date tagDate = null;
 		if (tagTime != null) {
 			try {
-				criteria.add(Restrictions.and(Restrictions.le("eventStartDate", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(tagTime)), Restrictions.ge("eventEndDate", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(tagTime))));
+				tagDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(tagTime);
+				hql.append(" and eventStartDate <= :tagDate and eventEndDate >= :tagDate");
 			} catch (ParseException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 
-		result = criteria.list();
-		
+		Query<Event> query = createQuery(hql.toString(), Event.class);
+		if (StringUtils.isNotBlank(beaconID)) {
+			query.setParameter("beaconID", beaconID);
+		}
+		if (tagDate != null) {
+			query.setParameter("tagDate", tagDate);
+		}
+		result = query.list();
+
 		clearSession();
-		
+
 		for(Event event : result) {
 			log.info("queryEventByTagTime result: " + event.getEventType());
 		}
-		
-		
+
+
 		if(result!=null && result.size()>0){
 			return result.get(0);
 		} else {
@@ -314,12 +332,12 @@ public class DataDaoImpl extends BaseDao implements DataDao {
 	@Override
 	public void deleteEvent(EventView event) {
 		Session session = beginTransaction();
-		Criteria criteria = getCriteria(Event.class);
-		criteria.add(Restrictions.eq("id", event.getId()));
-		List<Event> evts = criteria.list();
+		List<Event> evts = createQuery("from Event where id = :id", Event.class)
+				.setParameter("id", event.getId())
+				.list();
 		if( evts!=null && evts.size()>0){
 			for(Event evt : evts){
-				session.delete(evt);
+				session.remove(evt);
 			}
 			commit();
 		}

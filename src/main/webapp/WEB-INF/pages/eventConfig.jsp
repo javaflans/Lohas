@@ -1,8 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
-<%@taglib uri="http://www.kendoui.com/jsp/tags" prefix="kendo"%>
-<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 <jsp:include page="components/header.jsp" />
 <!-- 表頭資料區 -->
 <input type="hidden" id="breadCrumbLabel" value="${breadCrumb}"/>
@@ -39,8 +38,10 @@
 									<div class="labelSpace">
 										<label for="eventDesc">活動日期</label>
 									</div> 
-									<kendo:datePicker name="eventDate" format="yyyy/MM/dd" value="${today}" min="${minDay}" max="${maxDay}" style="width: 100%;">
-									</kendo:datePicker><br/>
+									<input id="eventDate" name="eventDate" style="width: 100%;" />
+									<script>jQuery(function(){jQuery("#eventDate").kendoDatePicker({
+										format: "yyyy/MM/dd", value: new Date(${today.time}), min: new Date(${minDay.time}), max: new Date(${maxDay.time})
+									});});</script><br/>
 									<div style="height: 15px">
 										<span class="k-invalid-msg" data-for="eventDate"></span>
 									</div>
@@ -51,8 +52,10 @@
 									<div class="labelSpace">
 										<label for="eventStartDate">活動起始時間</label>
 									</div> 
-									<kendo:timePicker name="eventStartTime" format="hh:mm tt" value="${startValue}" min="${startMin}" max="${startMax}"  style="width: 100%;">
-									</kendo:timePicker><br/>
+									<input id="eventStartTime" name="eventStartTime" style="width: 100%;" />
+									<script>jQuery(function(){jQuery("#eventStartTime").kendoTimePicker({
+										format: "hh:mm tt", value: new Date(${startValue.time}), min: new Date(${startMin.time}), max: new Date(${startMax.time})
+									});});</script><br/>
 									<div style="height: 15px">
 										<span class="k-invalid-msg" data-for="eventStartTime"></span>
 									</div>
@@ -62,8 +65,10 @@
 									<div class="labelSpace">
 										<label for="eventDesc">活動截止時間</label>
 									</div> 
-									<kendo:timePicker name="eventEndTime" format="hh:mm tt" value="${endValue}" min="${endMin}" max="${endMax}"  style="width: 100%;">
-									</kendo:timePicker><br/>
+									<input id="eventEndTime" name="eventEndTime" style="width: 100%;" />
+									<script>jQuery(function(){jQuery("#eventEndTime").kendoTimePicker({
+										format: "hh:mm tt", value: new Date(${endValue.time}), min: new Date(${endMin.time}), max: new Date(${endMax.time})
+									});});</script><br/>
 									<div style="height: 15px">
 										<span class="k-invalid-msg" data-for="eventEndTime"></span>
 									</div>
@@ -74,32 +79,36 @@
 									<div class="labelSpace">
 										<label for="eventDesc">活動地點</label>
 									</div> 
-									<kendo:dropDownList name="beaconID" dataTextField="locatLV1" dataValueField="beaconID" >
-								        <kendo:dataSource data="${beaconList}"></kendo:dataSource>
-								    </kendo:dropDownList>
+									<input id="beaconID" name="beaconID" />
+									<script>jQuery(function(){jQuery("#beaconID").kendoDropDownList({
+										dataTextField: "locatLV1", dataValueField: "beaconID",
+										dataSource: { data: ${beaconListJson} }
+									});});</script>
 							    </td>
 							</tr>
 						</table>
 					</fieldset>
 					<span class="eventStatus"></span>
 					<br/><br/>
-					<kendo:button name="eventSubmit" tag="a" class="eventSubmit">新增活動</kendo:button>
+					<a id="eventSubmit" class="eventSubmit">新增活動</a>
+					<script>jQuery(function(){jQuery("#eventSubmit").kendoButton({});});</script>
 				</form>
 			</div>
 		</td>
 		<td>
-			<kendo:grid name="grid" sortable="true"
-				filterable="true" style="height:480px;min-height:550px;" columnMenu="true" selectable="multiple row">
-				<kendo:grid-columns>
-					<kendo:grid-column title="活動名稱" width="105" field="eventType" />
-					<kendo:grid-column title="起始時間" field="eventStartDate" format="{0:MM/dd/yyyy HH:mm:ss}" />
-					<kendo:grid-column title="截止時間" field="eventEndDate" format="{0:MM/dd/yyyy HH:mm:ss}" />
-					<kendo:grid-column title="活動地點" field="locatLV1" template="<div>#:data.locatLV0 #-#:data.locatLV1 #</div>" />
-					<kendo:grid-column title="動作" width="90">
-		                <kendo:grid-column-command>
-		                   <kendo:grid-column-commandItem name="viewDetails" text="刪除">
-		                        <kendo:grid-column-commandItem-click>
-		                            <script>
+			<div id="grid" style="height:480px;min-height:550px;"></div>
+			<script>
+			jQuery(function(){jQuery("#grid").kendoGrid({
+				sortable: true,
+				filterable: true,
+				columnMenu: true,
+				selectable: "multiple row",
+				columns: [
+					{ title: "活動名稱", width: 105, field: "eventType" },
+					{ title: "起始時間", field: "eventStartDate", format: "{0:MM/dd/yyyy HH:mm:ss}" },
+					{ title: "截止時間", field: "eventEndDate", format: "{0:MM/dd/yyyy HH:mm:ss}" },
+					{ title: "活動地點", field: "locatLV1", template: "<div>#:data.locatLV0 #-#:data.locatLV1 #</div>" },
+					{ title: "動作", width: 90, command: [ { name: "viewDetails", text: "刪除", click:
 		                            function showDetails(e) {
 		                            	var jsonDataArray = new Array();
 		                                var dataItem = this.dataItem($(e.currentTarget).closest("tr"));
@@ -124,37 +133,27 @@
                             	            }
                             	        });
 		                            }
-		                            </script>
-		                        </kendo:grid-column-commandItem-click>
-		                   </kendo:grid-column-commandItem>
-		                </kendo:grid-column-command>
-		            </kendo:grid-column>
-				</kendo:grid-columns>
-				<kendo:grid-pageable refresh="true" pageSizes="true" buttonCount="5">
-				</kendo:grid-pageable>
-				<kendo:dataSource pageSize="10">
-					<kendo:dataSource-schema>
-						<kendo:dataSource-schema-model>
-							<kendo:dataSource-schema-model-fields>
-								<kendo:dataSource-schema-model-field name="eventType"	type="string" />
-								<kendo:dataSource-schema-model-field name="eventStartDate" type="string" />
-								<kendo:dataSource-schema-model-field name="eventEndDate" type="string" />
-								<kendo:dataSource-schema-model-field name="locatLV1" type="string" />
-							</kendo:dataSource-schema-model-fields>
-						</kendo:dataSource-schema-model>
-					</kendo:dataSource-schema>
-					<kendo:dataSource-transport>
-						<kendo:dataSource-transport-read type="POST" url="api/getEventList" />
-						<kendo:dataSource-transport-parameterMap>
-			            	<script>
+					} ] }
+				],
+				pageable: { refresh: true, pageSizes: true, buttonCount: 5 },
+				dataSource: {
+					pageSize: 10,
+					schema: { model: { fields: {
+						eventType: { type: "string" },
+						eventStartDate: { type: "string" },
+						eventEndDate: { type: "string" },
+						locatLV1: { type: "string" }
+					} } },
+					transport: {
+						read: { type: "POST", url: "api/getEventList" },
+						parameterMap:
 			             		function parameterMap(options) { 
 			            			return JSON.stringify(options);
 			             		}
-			            	</script>
-			            </kendo:dataSource-transport-parameterMap>
-					</kendo:dataSource-transport>
-				</kendo:dataSource>
-			</kendo:grid>
+					}
+				}
+			});});
+			</script>
 			<div style="margin-left: 20px; font-size: 18px; color:#ff8040; font-weight: bolder;">請注意! 顯示結果不為當日過去的資料</div>
 		</td>
 	</tr>

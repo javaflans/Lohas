@@ -3,6 +3,8 @@ package com.paralucent.services;
 import java.util.Date;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
 import com.paralucent.model.Beacon;
 import com.paralucent.model.Customer;
 import com.paralucent.model.Event;
@@ -11,6 +13,7 @@ import com.paralucent.model.HistoryView;
 import com.paralucent.model.Menus;
 import com.paralucent.viewmodel.HistoryBO;
 
+@Service
 public class DataServiceImpl extends BaseService implements DataService {
 	
 	public DataServiceImpl() {

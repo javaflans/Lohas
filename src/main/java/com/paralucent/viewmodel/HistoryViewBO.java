@@ -3,7 +3,7 @@ package com.paralucent.viewmodel;
 import java.io.Serializable;
 import java.util.Date;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 import com.paralucent.utils.CustomDateSerializer;
 import com.paralucent.utils.CustomDateTimeSerializer;
 

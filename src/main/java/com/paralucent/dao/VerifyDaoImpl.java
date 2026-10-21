@@ -1,18 +1,18 @@
 package com.paralucent.dao;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.Criteria;
 import org.hibernate.Session;
-import org.hibernate.criterion.Restrictions;
+import org.hibernate.query.Query;
+import org.springframework.stereotype.Repository;
 
 import com.paralucent.model.Member;
 import com.paralucent.model.Status;
 import com.paralucent.model.VerifyAccount;
 
+@Repository
 public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 
 	public VerifyDaoImpl() {
@@ -22,24 +22,24 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 
 	@Override
 	public Member searchByMember(Member member) {
-		Criteria criteria = getCriteria(Member.class);
 		log.info("userMail: " + member.getUserMail());
-		if (StringUtils.isNotBlank(member.getUserMail())) {
-			criteria.add(Restrictions.eq("userMail", member.getUserMail()));
-		} else {
+		if (StringUtils.isBlank(member.getUserMail())) {
 			return null;
 		}
 		log.info("password: " + member.getUserPassword());
-		if (StringUtils.isNotBlank(member.getUserPassword())) {
-			criteria.add(Restrictions.eq("userPassword", member.getUserPassword()));
-		} else {
+		if (StringUtils.isBlank(member.getUserPassword())) {
 			return null;
 		}
-		
-		criteria.createCriteria("mailStatus").add(Restrictions.and(Restrictions.eq("stuType", "validated"),Restrictions.eq("usageTable", "member")));
-		
-		@SuppressWarnings("unchecked")
-		List<Member> result = criteria.list();
+
+		List<Member> result = createQuery(
+				"select m from Member m join m.mailStatus s"
+						+ " where m.userMail = :userMail and m.userPassword = :userPassword"
+						+ " and s.stuType = :stuType and s.usageTable = :usageTable", Member.class)
+				.setParameter("userMail", member.getUserMail())
+				.setParameter("userPassword", member.getUserPassword())
+				.setParameter("stuType", "validated")
+				.setParameter("usageTable", "member")
+				.list();
 		log.info("login search result: " + result);
 		clearSession();
 		if (!result.isEmpty() && result.size() > 0) {
@@ -52,9 +52,9 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 	public int insertVerify(VerifyAccount verify) {
 		log.info("enter insert");
 		Session session = beginTransaction();
-		session.saveOrUpdate(verify);
+		VerifyAccount merged = session.merge(verify);
 		commit();
-		Serializable id = session.getIdentifier(verify);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 
@@ -64,14 +64,13 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 	public List<Member> queryDuplicateMember(Member member) {
 		log.info("enter queryDuplicateMember");
 		List<Member> result = new ArrayList<Member>(0);
-		Criteria criteria = getCriteria(Member.class);
-		if (StringUtils.isNotBlank(member.getUserMail())) {
-			criteria.add(Restrictions.eq("userMail", member.getUserMail()));
-		} else {
+		if (StringUtils.isBlank(member.getUserMail())) {
 			return null;
 		}
-		result = criteria.list();
-		log.info("Query duplicate member size: " + result.size());		
+		result = createQuery("from Member where userMail = :userMail", Member.class)
+				.setParameter("userMail", member.getUserMail())
+				.list();
+		log.info("Query duplicate member size: " + result.size());
 		clearSession();
 		return result;
 	}
@@ -80,9 +79,9 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 	public int insertUpdateMember(Member member) {
 		log.info("enter insertMember");
 		Session session = beginTransaction();
-		session.saveOrUpdate(member);
+		Member merged = session.merge(member);
 		commit();
-		Serializable id = session.getIdentifier(member);
+		Object id = session.getIdentifier(merged);
 		clearSession();
 		return (Integer) id;
 	}
@@ -90,10 +89,9 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 	@Override
 	public Status searchStatusByCode(int code) {
 		log.info("enter searchStatusByCode");
-		List<Status> result = new ArrayList<Status>(0);
-		Criteria criteria = getCriteria(Status.class);
-		criteria.add(Restrictions.eq("stuCode", code));
-		result = criteria.list();
+		List<Status> result = createQuery("from Status where stuCode = :stuCode", Status.class)
+				.setParameter("stuCode", code)
+				.list();
 		clearSession();
 		if (!result.isEmpty() && result.size() > 0) {
 			return result.get(0);
@@ -103,19 +101,28 @@ public class VerifyDaoImpl extends BaseDao implements VerifyDao {
 
 	@Override
 	public Member searchByKOL(Member memberData) {
-		Criteria criteria = getCriteria(Member.class);
+		StringBuilder hql = new StringBuilder("from Member where 1 = 1");
 		if (StringUtils.isNotBlank(memberData.getUserMail())) {
-			criteria.add(Restrictions.eq("userMail", memberData.getUserMail()));
+			hql.append(" and userMail = :userMail");
 		}
 		if (StringUtils.isNotBlank(memberData.getUserUuid())) {
-			criteria.add(Restrictions.eq("userUuid", memberData.getUserUuid()));
+			hql.append(" and userUuid = :userUuid");
 		}
 		if (StringUtils.isNotBlank(memberData.getUserName())) {
-			criteria.add(Restrictions.eq("userName", memberData.getUserName()));
+			hql.append(" and userName = :userName");
 		}
-		
-		@SuppressWarnings("unchecked")
-		List<Member> result = criteria.list();
+
+		Query<Member> query = createQuery(hql.toString(), Member.class);
+		if (StringUtils.isNotBlank(memberData.getUserMail())) {
+			query.setParameter("userMail", memberData.getUserMail());
+		}
+		if (StringUtils.isNotBlank(memberData.getUserUuid())) {
+			query.setParameter("userUuid", memberData.getUserUuid());
+		}
+		if (StringUtils.isNotBlank(memberData.getUserName())) {
+			query.setParameter("userName", memberData.getUserName());
+		}
+		List<Member> result = query.list();
 		clearSession();
 		if (!result.isEmpty() && result.size() > 0) {
 			return result.get(0);

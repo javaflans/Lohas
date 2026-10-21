@@ -25,7 +25,6 @@ public class EncrypAES {
     public EncrypAES()
         throws NoSuchAlgorithmException, NoSuchPaddingException
     {
-        Security.addProvider(new com.sun.crypto.provider.SunJCE());
         // 實例化支持 AES 演算法的密鑰生成器(演算法名稱命名需按規定，否則拋出異常)
         keygen = KeyGenerator.getInstance("AES");
         //生成密鑰

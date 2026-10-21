@@ -3,6 +3,7 @@ package com.paralucent.controller;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -14,14 +15,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +34,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import com.paralucent.model.Beacon;
 import com.paralucent.model.Event;
@@ -61,7 +64,10 @@ public class StandardController extends BaseController {
 	
 	@Autowired
 	private VerifyService verifyService;
-	
+
+	@Autowired
+	private JsonMapper jsonMapper;
+
 
 	public StandardController() {
 		super();
@@ -753,7 +759,7 @@ public class StandardController extends BaseController {
 		for( HistoryView history : lists){
 //			cm = new BigDecimal(history.getRssi()).multiply(new BigDecimal("-1.7"));
 			cm = BeaconUtils.calculateAccuracy(new BigDecimal(history.getRssi())).multiply(new BigDecimal("100"));
-			px = cm.multiply(new BigDecimal("23")).divide(new BigDecimal("100"),2,BigDecimal.ROUND_HALF_UP);
+			px = cm.multiply(new BigDecimal("23")).divide(new BigDecimal("100"),2,RoundingMode.HALF_UP);
 			history.setPosX(history.getPosX()+random(px).intValue());
 			history.setPosY(history.getPosY()+random(px).intValue());
 		}
@@ -767,7 +773,7 @@ public class StandardController extends BaseController {
 		
 		Random rd = new Random();
 		
-		return new BigDecimal(Math.random()).multiply(range).add(BigDecimal.ONE).divide(BigDecimal.ONE,2,BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal(i[rd.nextInt(i.length)])); 
+		return new BigDecimal(Math.random()).multiply(range).add(BigDecimal.ONE).divide(BigDecimal.ONE,2,RoundingMode.HALF_UP).multiply(new BigDecimal(i[rd.nextInt(i.length)])); 
 	}
 		
 	/**
@@ -891,6 +897,7 @@ public class StandardController extends BaseController {
 			
 			List<Beacon> beacons = prepareBeacons();
 			session.setAttribute("beaconList", beacons);
+			session.setAttribute("beaconListJson", jsonMapper.writeValueAsString(beacons));
 			
 			return returnView("eventConfig");
 		} else {
