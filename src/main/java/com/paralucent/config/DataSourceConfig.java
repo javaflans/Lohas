@@ -32,7 +32,7 @@ public class DataSourceConfig {
 		dataSource.setTimeBetweenEvictionRunsMillis(3000);
 		dataSource.setMinEvictableIdleTimeMillis(30000);
 
-		dataSource.setValidationQuery("SELECT 1 FROM DUAL");
+		dataSource.setValidationQuery("SELECT 1");
 		dataSource.setTestWhileIdle(true);
 		dataSource.setTestOnBorrow(false);
 		dataSource.setTestOnReturn(false);
@@ -40,7 +40,7 @@ public class DataSourceConfig {
 		dataSource.setPoolPreparedStatements(true);
 		dataSource.setMaxPoolPreparedStatementPerConnectionSize(20);
 
-		dataSource.setFilters("wall,slf4j,stat");
+		dataSource.setFilters("stat,slf4j");
 		dataSource.setDefaultAutoCommit(false);
 		return dataSource;
 	}
