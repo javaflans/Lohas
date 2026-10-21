@@ -1,5 +1,5 @@
-# lohas
-spring mvc project by lohas
+# Lohas
+spring mvc project by Lohas
 
 ## history
 - 榮總 RFID card track client platform on 2018.

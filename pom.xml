@@ -9,10 +9,10 @@
 		<relativePath/>
 	</parent>
 	<groupId>com.paralucent</groupId>
-	<artifactId>lohas</artifactId>
+	<artifactId>Lohas</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name>lohas</name>
+	<name>Lohas</name>
 	<properties>
 		<java.version>25</java.version>
 		<druid.version>1.2.28</druid.version>

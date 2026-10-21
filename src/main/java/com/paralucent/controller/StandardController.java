@@ -58,7 +58,7 @@ import com.paralucent.viewmodel.HistoryViewBO;
 @Controller
 public class StandardController extends BaseController {
 	
-	private final static String DOMAIN_URL = "http://localhost:8080/lohas";
+	private final static String DOMAIN_URL = "http://localhost:8080/Lohas";
 	@Autowired
 	private DataService dataService;
 	
